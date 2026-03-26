@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CargoIntegrator RFQ — Платформа запросов ставок</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#D6E0FF;--surface:#FFFFFF;--surface2:#E4EAFF;--border:#B0C0F0;
+  --accent:#2451C8;--accent-bg:#DCE6FF;--accent-border:#94AAED;
+  --accent2:#E87020;--accent2-bg:#FFE8D0;--accent2-border:#F5C090;
+  --success:#0E7C4A;--success-bg:#DCFBEA;--success-border:#6EE0A8;
+  --warn:#92400E;--warn-bg:#FEF5DC;--warn-border:#F8CC60;
+  --danger:#991B1B;--danger-bg:#FEE8E8;--danger-border:#F8AAAA;
+  --muted:#4A5580;--text:#0F1A3A;--text2:#253260;
+  --radius:12px;--radius-sm:8px;--shadow:0 2px 8px rgba(20,50,160,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:linear-gradient(140deg,#A8BEFF 0%,#C4D3FF 30%,#D8CAFF 55%,#F0C8A0 80%,#F5B880 100%);background-attachment:fixed;color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.topbar{background:linear-gradient(90deg,#1428A0 0%,#2451C8 45%,#B84A08 100%);border-bottom:none;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 3px 16px rgba(20,40,160,.30)}
+.logo{font-size:16px;font-weight:600;letter-spacing:-.3px;color:#fff}
+.logo span{color:#FFBD80}
+.rfq-chip{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:2px 10px;font-size:12px;font-family:'DM Mono',monospace;font-weight:500}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.dirty-dot{width:7px;height:7px;border-radius:50%;background:#FFD580;display:none}
+.dirty-dot.show{display:inline-block}
+.layout{display:flex;min-height:calc(100vh - 52px)}
+.sidebar{width:210px;flex-shrink:0;padding:18px 12px;border-right:1px solid rgba(100,130,240,.25);background:linear-gradient(180deg,rgba(168,190,255,.90) 0%,rgba(245,190,130,.85) 100%);backdrop-filter:blur(8px)}
+.sidebar-label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);padding:0 8px;margin-bottom:5px;margin-top:4px}
+.step-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;margin-bottom:1px;color:var(--muted);font-size:13px;transition:all .15s;user-select:none;position:relative}
+.step-item:hover{background:rgba(255,255,255,.5)}
+.step-item.active{background:linear-gradient(90deg,rgba(220,230,255,.9),rgba(255,232,208,.9));color:var(--accent);font-weight:500;box-shadow:0 1px 6px rgba(36,81,200,.12)}
+.step-item.done{color:var(--success)}
+.step-item.done:hover{background:rgba(255,255,255,.7);color:var(--accent)}
+.step-item.locked{cursor:not-allowed;opacity:.45}
+.step-item.locked:hover{background:transparent}
+.step-num{width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+.step-item.active .step-num{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
+.step-item.done .step-num{background:var(--success);color:#fff;border-color:var(--success)}
+.sidebar-div{height:1px;background:rgba(100,130,220,.2);margin:10px 0}
+.main{flex:1;padding:24px;overflow-y:auto;max-width:860px}
+.page{display:none}.page.active{display:block}
+.card{background:linear-gradient(135deg,rgba(255,255,255,.70) 0%,rgba(235,242,255,.65) 100%);border:1px solid rgba(180,205,255,.6);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:0 4px 20px rgba(20,50,160,.10);backdrop-filter:blur(12px)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.fg-3{grid-template-columns:1fr 1fr 1fr}
+.fg-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;font-weight:500;color:var(--muted)}
+input,select,textarea{font-family:'DM Sans',sans-serif;font-size:13px;background:rgba(240,244,255,.85);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 11px;color:var(--text);outline:none;transition:all .15s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(36,81,200,.10)}
+textarea{min-height:68px;resize:vertical}
+.input-hint{font-size:11px;color:var(--muted);margin-top:3px}
+.tag-group{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(240,244,255,.85);font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s;user-select:none}
+.tag:hover{border-color:var(--accent);color:var(--accent);background:rgba(210,225,255,.9)}
+.tag.sel{background:linear-gradient(135deg,rgba(36,81,200,.2),rgba(100,60,200,.15));color:var(--accent);border-color:var(--accent-border);font-weight:500}
+.legs-builder{margin-top:12px;padding:14px;background:linear-gradient(135deg,rgba(210,225,255,.55),rgba(255,228,195,.50));border:1px dashed rgba(100,130,220,.4);border-radius:var(--radius-sm)}
+.legs-title{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:9px}
+.leg-tag{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.75);font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s;user-select:none}
+.leg-tag:hover{border-color:var(--accent);background:rgba(210,225,255,.8)}
+.leg-tag.sel{background:linear-gradient(135deg,rgba(36,81,200,.18),rgba(232,112,32,.18));border-color:var(--accent-border);color:var(--accent);font-weight:500}
+.legs-preview{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;min-height:24px}
+.leg-pill{background:linear-gradient(135deg,rgba(36,81,200,.15),rgba(232,112,32,.15));border:1px solid var(--accent-border);border-radius:20px;padding:3px 10px;color:var(--accent);font-size:12px}
+.route-grid{display:grid;grid-template-columns:1fr 36px 1fr;gap:10px;align-items:start}
+.route-arrow{display:flex;align-items:center;justify-content:center;padding-top:24px;color:var(--accent);font-size:20px;font-weight:700}
+.waypoint-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.waypoint-row input{flex:1}
+.wp-del{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted);font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.wp-del:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-bg)}
+.add-link{font-size:12px;color:var(--accent);cursor:pointer;font-weight:500}
+.add-link:hover{text-decoration:underline}
+.doc-list{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.doc-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:linear-gradient(90deg,rgba(210,225,255,.5),rgba(255,228,195,.4));border:1px solid rgba(160,185,240,.5);border-radius:var(--radius-sm)}
+.doc-icon{font-size:18px;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:2px 6px;border-radius:4px;transition:all .15s}
+.doc-del:hover{color:var(--danger);background:var(--danger-bg)}
+.doc-type-sel{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);background:rgba(255,255,255,.8);color:var(--text2);cursor:pointer;margin-top:2px;max-width:200px}
+.upload-zone{border:2px dashed rgba(100,130,220,.4);border-radius:var(--radius-sm);padding:18px;text-align:center;cursor:pointer;transition:all .15s;background:rgba(220,232,255,.35)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(210,225,255,.55)}
+.upload-zone input[type=file]{display:none}
+.upload-icon{font-size:26px;margin-bottom:6px}
+.upload-text{font-size:12px;color:var(--muted);line-height:1.6}
+.upload-text strong{color:var(--accent)}
+.agents-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:150px;position:relative}
+.search-wrap input{padding-left:28px}
+.s-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none}
+.agents-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px;margin-bottom:12px}
+.agent-card{background:rgba(255,255,255,.78);border:1px solid rgba(160,185,240,.5);border-radius:var(--radius);padding:12px;cursor:pointer;transition:all .15s;position:relative;backdrop-filter:blur(4px)}
+.agent-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(36,81,200,.12);background:rgba(220,232,255,.7)}
+.agent-card.sel{border-color:var(--accent);background:linear-gradient(135deg,rgba(210,225,255,.8),rgba(255,228,195,.5))}
+.agent-ck{position:absolute;top:9px;right:9px;width:17px;height:17px;border-radius:50%;border:1.5px solid var(--border);background:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-size:9px}
+.agent-card.sel .agent-ck{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
+.agent-name{font-weight:600;font-size:13px;margin-bottom:2px;padding-right:22px}
+.agent-country{font-size:11px;color:var(--muted);margin-bottom:5px}
+.agent-pills{display:flex;flex-wrap:wrap;gap:3px}
+.ap{font-size:10px;background:rgba(210,225,255,.6);color:var(--accent);padding:2px 6px;border-radius:20px}
+.add-card{border:1.5px dashed rgba(100,130,220,.4);border-radius:var(--radius);padding:12px;cursor:pointer;text-align:center;color:var(--muted);font-size:13px;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:90px;background:rgba(220,232,255,.3)}
+.add-card:hover{border-color:var(--accent);color:var(--accent);background:rgba(210,225,255,.55)}
+.plat-banner{background:linear-gradient(120deg,rgba(210,225,255,.75) 0%,rgba(230,220,255,.7) 50%,rgba(255,228,195,.65) 100%);border:1px solid rgba(150,175,240,.5);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;backdrop-filter:blur(4px)}
+.plat-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px}
+.plat-desc{font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:12px}
+.plat-count{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#2451C8,#C05A10);color:#fff;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600}
+.email-hdr{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;background:linear-gradient(90deg,rgba(210,225,255,.5),rgba(255,228,195,.35));border-radius:var(--radius-sm);padding:11px;margin-bottom:11px;font-size:12px}
+.email-lbl{color:var(--muted);font-weight:500}
+.email-val{color:var(--text2)}
+.email-body{background:rgba(240,245,255,.7);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:13px;line-height:1.75;white-space:pre-wrap;outline:none;min-height:180px;max-height:340px;overflow-y:auto}
+.email-body:focus{border-color:var(--accent);background:rgba(255,255,255,.9)}
+.load-row{display:flex;align-items:center;gap:10px;padding:28px;justify-content:center;color:var(--muted);font-size:13px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bl 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,60%,100%{opacity:.15}30%{opacity:1}}
+.send-rows{display:flex;flex-direction:column;gap:7px}
+.send-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid rgba(160,185,240,.5);border-radius:var(--radius-sm);font-size:13px;transition:all .3s;background:rgba(255,255,255,.7)}
+.send-row.pending{opacity:.6}
+.send-row.sending{border-color:#F59E0B;background:linear-gradient(90deg,rgba(255,245,210,.8),rgba(255,230,180,.7))}
+.send-row.sent{border-color:var(--success-border);background:linear-gradient(90deg,rgba(220,250,235,.8),rgba(200,245,225,.7))}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;transition:all .3s}
+.send-row.sending .sdot{background:#F59E0B;animation:bl 1s infinite}
+.send-row.sent .sdot{background:var(--success)}
+.stag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);margin-left:auto}
+.send-row.sent .stag{background:var(--success-bg);color:var(--success)}
+.send-row.sending .stag{background:var(--warn-bg);color:var(--warn)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.stat{background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(230,238,255,.65));border:1px solid rgba(160,185,240,.5);border-radius:var(--radius);padding:14px;text-align:center;box-shadow:0 4px 16px rgba(20,50,160,.10);backdrop-filter:blur(6px)}
+.stat-val{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px;font-family:'DM Mono',monospace}
+.stat-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;font-weight:600;color:var(--muted);text-align:left;padding:9px 11px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+td{padding:10px 11px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr.best-r{background:#FFFBEB}
+tr.best-r td:first-child{border-left:3px solid #F59E0B}
+tr.plat-r{background:var(--accent-bg)}
+tr.plat-r td:first-child{border-left:3px solid var(--accent)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.b-best{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-border)}
+.b-good{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
+.b-avg{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+.b-wait{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.price-big{font-size:15px;font-weight:600;font-family:'DM Mono',monospace}
+.info-box{background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--accent);margin-bottom:13px;line-height:1.65}
+.btn{padding:8px 17px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:linear-gradient(135deg,#2451C8 0%,#1A3FA0 100%);color:#fff;border-color:#2451C8}
+.btn-primary:hover{background:linear-gradient(135deg,#1A3FA0 0%,#122E7A 100%)}
+.btn-success{background:linear-gradient(135deg,#0E7C4A 0%,#0A5E38 100%);color:#fff;border-color:#0E7C4A}
+.btn-success:hover{background:linear-gradient(135deg,#0A5E38 0%,#074528 100%)}
+.btn-warn{background:linear-gradient(135deg,#FFF8ED,#FFF3E8);color:var(--accent2);border-color:var(--accent2-border)}
+.btn-warn:hover{background:linear-gradient(135deg,#FFF3E8,#FFE8D0)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:flex;align-items:center;gap:9px;margin-top:18px;flex-wrap:wrap}
+.spacer{flex:1}
+.rfq-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:11px 16px;background:linear-gradient(90deg,#EBF0FF,#FFF3E8);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 2px 8px rgba(36,81,200,.08)}
+.rfq-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;flex-shrink:0}
+.rfq-input{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;border:none;background:transparent;color:var(--accent);outline:none;flex:1;min-width:0}
+.rfq-auto{font-size:11px;color:var(--accent2);cursor:pointer;flex-shrink:0;font-weight:500}
+.rfq-auto:hover{text-decoration:underline}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:300;display:none;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);padding:22px;width:400px;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.14)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:15px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1}
+.modal-close:hover{color:var(--text)}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--text);color:#fff;border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;z-index:999;opacity:0;transform:translateY(6px);transition:all .22s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.multisel-wrap{position:relative}
+.multisel-box{min-height:40px;background:rgba(240,244,255,.85);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 32px 6px 8px;cursor:pointer;display:flex;align-items:flex-start;flex-wrap:wrap;gap:5px;transition:all .15s;position:relative}
+.multisel-box:hover,.multisel-box.open{border-color:var(--accent);box-shadow:0 0 0 3px rgba(36,81,200,.10)}
+.multisel-arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;transition:transform .2s;pointer-events:none}
+.multisel-arrow.open{transform:translateY(-50%) rotate(180deg)}
+.multisel-placeholder{font-size:13px;color:var(--muted);padding:2px 3px}
+.multisel-chip{background:linear-gradient(135deg,var(--accent-bg),#EEF5FF);border:1px solid var(--accent-border);color:var(--accent);border-radius:20px;padding:2px 8px 2px 10px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.chip-del{cursor:pointer;color:var(--accent);font-size:14px;line-height:1;opacity:.7}
+.chip-del:hover{opacity:1}
+.multisel-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--accent-border);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(36,81,200,.15);z-index:50;overflow:hidden;max-height:280px;overflow-y:auto}
+.multisel-opt{padding:9px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .12s;color:var(--text2)}
+.multisel-opt:hover{background:var(--accent-bg)}
+.multisel-opt.sel{background:linear-gradient(90deg,var(--accent-bg),#F0F4FF);color:var(--accent);font-weight:500}
+.multisel-ck{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;color:transparent;transition:all .15s}
+.multisel-opt.sel .multisel-ck{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(max-width:680px){.sidebar{display:none}.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Cargo<span>Integrator</span> <span style="font-weight:400;font-size:13px;opacity:.75">RFQ</span></div>
+  <div class="rfq-chip" id="rfq-chip" style="display:none"></div>
+  <div class="topbar-right">
+    <div class="dirty-dot" id="dirty-dot" title="Несохранённые изменения"></div>
+    <button class="btn btn-warn" onclick="saveDraft()" style="padding:5px 13px;font-size:12px">💾 Сохранить черновик</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Запрос</div>
+    <div class="step-item active" id="si-1" onclick="tryGoStep(1)"><div class="step-num">1</div>Параметры</div>
+    <div class="step-item" id="si-2" onclick="tryGoStep(2)"><div class="step-num">2</div>Маршрут</div>
+    <div class="step-item" id="si-3" onclick="tryGoStep(3)"><div class="step-num">3</div>Груз и услуги</div>
+    <div class="step-item" id="si-4" onclick="tryGoStep(4)"><div class="step-num">4</div>Документы</div>
+    <div class="sidebar-div"></div>
+    <div class="sidebar-label">Процесс</div>
+    <div class="step-item" id="si-5" onclick="tryGoStep(5)"><div class="step-num">5</div>Выбор агентов</div>
+    <div class="step-item" id="si-6" onclick="tryGoStep(6)"><div class="step-num">6</div>Письмо-запрос</div>
+    <div class="step-item" id="si-7" onclick="tryGoStep(7)"><div class="step-num">7</div>Отправка</div>
+    <div class="step-item" id="si-8" onclick="tryGoStep(8)"><div class="step-num">8</div>Результаты</div>
+  </div>
+
+  <div class="main">
+
+    <!-- PAGE 1 -->
+    <div class="page active" id="page-1">
+      <div class="rfq-bar">
+        <span class="rfq-lbl">№ Запроса</span>
+        <input class="rfq-input" id="rfq-number" placeholder="RFQ-20250101-001" oninput="onRfqInput()">
+        <span class="rfq-auto" onclick="autoRfq()">Авто ↻</span>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Вид перевозки</div></div>
+        <div class="tag-group" id="mode-tags">
+          <div class="tag" data-mode="sea-fcl" onclick="toggleMode(this)">🚢 FCL</div>
+          <div class="tag" data-mode="sea-lcl" onclick="toggleMode(this)">🚢 LCL</div>
+          <div class="tag" data-mode="air" onclick="toggleMode(this)">✈️ Авиа</div>
+          <div class="tag" data-mode="road-ftl" onclick="toggleMode(this)">🚛 FTL</div>
+          <div class="tag" data-mode="road-ltl" onclick="toggleMode(this)">🚛 LTL</div>
+          <div class="tag" data-mode="rail" onclick="toggleMode(this)">🚂 Железная дорога</div>
+          <div class="tag" data-mode="multi" onclick="toggleMode(this)">🔀 Мультимодальная</div>
+        </div>
+        <div class="legs-builder" id="legs-builder" style="display:none">
+          <div class="legs-title">Плечи мультимодального маршрута — выберите комбинацию:</div>
+          <div class="tag-group">
+            <div class="leg-tag" data-leg="sea" onclick="toggleLeg(this)">🚢 Море</div>
+            <div class="leg-tag" data-leg="air" onclick="toggleLeg(this)">✈️ Авиа</div>
+            <div class="leg-tag" data-leg="rail" onclick="toggleLeg(this)">🚂 Ж/Д</div>
+            <div class="leg-tag" data-leg="road" onclick="toggleLeg(this)">🚛 Авто</div>
+            <div class="leg-tag" data-leg="barge" onclick="toggleLeg(this)">⛵ Баржа</div>
+          </div>
+          <div class="legs-preview" id="legs-preview"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Общие параметры</div></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Incoterms</label>
+            <select id="f-inco" onchange="markDirty()">
+              <option value="">Не выбрано</option>
+              <option>EXW</option><option>FCA</option><option>FOB</option><option>CFR</option>
+              <option>CIF</option><option>DAP</option><option>DDP</option><option>FAS</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Дата готовности груза</label>
+            <input type="date" id="f-date" onchange="markDirty()">
+          </div>
+          <div class="form-group">
+            <label>Желаемая дата доставки</label>
+            <input type="date" id="f-deadline" onchange="markDirty()">
+          </div>
+          <div class="form-group fg-full">
+            <label>Комментарий к запросу</label>
+            <textarea id="f-notes" oninput="markDirty()" placeholder="Приоритет, альтернативные варианты..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goStep(2)">Далее: Маршрут →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="page" id="page-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Страны</div></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Страна отправления</label>
+            <select id="f-country-from" onchange="markDirty()">
+              <option value="">Выберите страну...</option>
+              <option>Китай</option><option>Германия</option><option>Нидерланды</option><option>Турция</option>
+              <option>ОАЭ</option><option>Южная Корея</option><option>Финляндия</option>
+              <option>Казахстан</option><option>Россия</option><option>Гонконг</option>
+              <option>Япония</option><option>Индия</option><option>США</option><option>Другая</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Страна назначения</label>
+            <select id="f-country-to" onchange="markDirty()">
+              <option value="">Выберите страну...</option>
+              <option>Россия</option><option>Китай</option><option>Германия</option><option>Нидерланды</option>
+              <option>Турция</option><option>ОАЭ</option><option>Казахстан</option>
+              <option>Беларусь</option><option>Польша</option><option>США</option><option>Другая</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Пункты отправления и назначения</div></div>
+        <div class="route-grid">
+          <div>
+            <div class="form-group">
+              <label>Пункт отправления</label>
+              <input type="text" id="f-origin" placeholder="Порт, город, склад..." oninput="markDirty()">
+              <span class="input-hint">например: порт Шанхай (CNSHA)</span>
+            </div>
+          </div>
+          <div class="route-arrow">→</div>
+          <div>
+            <div class="form-group">
+              <label>Пункт назначения</label>
+              <input type="text" id="f-dest" placeholder="Порт, город, склад..." oninput="markDirty()">
+              <span class="input-hint">например: порт Новороссийск (RUNVS)</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px">Промежуточные точки / транзитные порты</div>
+          <div id="wp-list"></div>
+          <span class="add-link" onclick="addWp()">+ Добавить точку</span>
+          <div class="input-hint" style="margin-top:5px">Укажите конкретный порт если важен маршрут (например: только через Новороссийск)</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(1)">← Назад</button>
+        <button class="btn btn-primary" onclick="goStep(3)">Далее: Груз →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 3 -->
+    <div class="page" id="page-3">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Параметры груза</div></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Наименование груза (рус.)</label>
+            <input type="text" id="f-cargo" placeholder="Промышленное оборудование" oninput="markDirty()">
+          </div>
+          <div class="form-group">
+            <label>Наименование груза (англ.)</label>
+            <input type="text" id="f-cargo-en" placeholder="Industrial equipment" oninput="markDirty()">
+          </div>
+          <div class="form-group">
+            <label>Код ТН ВЭД / HS Code</label>
+            <input type="text" id="f-hs" placeholder="8457.10.10" oninput="markDirty()">
+          </div>
+          <div class="form-group fg-full">
+            <label>Стоимость груза</label>
+            <div style="display:flex;gap:8px">
+              <input type="number" id="f-val" placeholder="150 000" oninput="markDirty()" style="flex:1">
+              <select id="f-curr" onchange="markDirty()" style="width:90px;flex-shrink:0">
+                <option>USD</option><option>EUR</option><option>CNY</option><option>RUB</option><option>GBP</option><option>AED</option><option>KZT</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Вес брутто (кг)</label>
+            <input type="number" id="f-weight" placeholder="25000" oninput="markDirty()">
+          </div>
+          <div class="form-group">
+            <label>Объём (м³)</label>
+            <input type="number" id="f-vol" placeholder="60" oninput="markDirty()">
+          </div>
+          <div class="form-group">
+            <label>Количество мест</label>
+            <input type="text" id="f-pcs" placeholder="5 ящиков / паллет" oninput="markDirty()">
+          </div>
+          <div class="form-group">
+            <label>Габариты (Д × Ш × В, см)</label>
+            <input type="text" id="f-dims" placeholder="200 × 120 × 150" oninput="markDirty()">
+          </div>
+          <div class="form-group fg-full">
+            <label>Особые условия транспортировки</label>
+            <textarea id="f-special" oninput="markDirty()" placeholder="Нештабелируемый, хрупкий, опасный груз, температурный режим..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Дополнительные услуги</div></div>
+        <div class="multisel-wrap" id="svc-wrap">
+          <div class="multisel-box" id="svc-box" onclick="toggleSvcDropdown(event)">
+            <div class="multisel-chips" id="svc-chips"><span class="multisel-placeholder">Выберите услуги...</span></div>
+            <div class="multisel-arrow" id="svc-arrow">▾</div>
+          </div>
+          <div class="multisel-dropdown" id="svc-dropdown" style="display:none">
+            <div class="multisel-opt" data-val="Страхование груза" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Страхование груза</div>
+            <div class="multisel-opt" data-val="Таможня (экспорт)" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Таможня (экспорт)</div>
+            <div class="multisel-opt" data-val="Таможня (импорт)" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Таможня (импорт)</div>
+            <div class="multisel-opt" data-val="Сертификат происхождения" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Сертификат происхождения</div>
+            <div class="multisel-opt" data-val="Фумигация" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Фумигация</div>
+            <div class="multisel-opt" data-val="Доставка до склада" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Доставка до склада</div>
+            <div class="multisel-opt" data-val="Погрузо-разгрузочные работы" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Погрузо-разгрузочные работы</div>
+            <div class="multisel-opt" data-val="Складское хранение" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Складское хранение</div>
+            <div class="multisel-opt" data-val="Сопровождение ВГК" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Сопровождение ВГК</div>
+            <div class="multisel-opt" data-val="Карантинный контроль" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Карантинный контроль</div>
+            <div class="multisel-opt" data-val="Упаковка и маркировка" onclick="toggleSvc(this)"><span class="multisel-ck">✓</span>Упаковка и маркировка</div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(2)">← Назад</button>
+        <button class="btn btn-primary" onclick="goStep(4)">Далее: Документы →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 4 -->
+    <div class="page" id="page-4">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Документы</div></div>
+        <div class="doc-list" id="doc-list"></div>
+        <div class="upload-zone" onclick="document.getElementById('file-inp').click()" ondragover="ev.preventDefault();this.classList.add('drag')" ondrop="handleDrop(event)" ondragleave="this.classList.remove('drag')">
+          <input type="file" id="file-inp" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="addFiles(event,'doc')">
+          <div class="upload-icon">📎</div>
+          <div class="upload-text"><strong>Нажмите</strong> или перетащите файлы<br>PDF, Word, Excel, изображения</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Фотографии груза</div></div>
+        <div class="doc-list" id="photo-list"></div>
+        <div class="upload-zone" onclick="document.getElementById('photo-inp').click()">
+          <input type="file" id="photo-inp" multiple accept=".jpg,.jpeg,.png,.webp" onchange="addFiles(event,'photo')">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text"><strong>Добавить фотографии</strong><br>JPG, PNG — рекомендуется для нестандартных грузов</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(3)">← Назад</button>
+        <button class="btn btn-primary" onclick="goStep(5)">Далее: Агенты →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 5 -->
+    <div class="page" id="page-5">
+      <div class="plat-banner">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="plat-count" id="plat-count">● 15 агентов по маршруту</span>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--accent);font-weight:500">
+            <input type="checkbox" id="use-plat" style="width:15px;height:15px;accent-color:var(--accent)" onchange="markDirty()">
+            Выслать агентам платформы запрос
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Ваша база агентов</div>
+          <span id="sel-count" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div id="agent-autoinfo" style="display:none;background:linear-gradient(90deg,var(--accent-bg),#FFF3E8);border:1px solid var(--accent-border);border-radius:var(--radius-sm);padding:8px 13px;font-size:12px;color:var(--accent);margin-bottom:12px;font-weight:500">✦ Агенты подобраны автоматически</div>
+        <div class="agents-toolbar">
+          <div class="search-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="agent-q" placeholder="Поиск..." oninput="filterAgents()">
+          </div>
+          <select id="agent-cf" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm)" onchange="filterAgents()">
+            <option value="">Все страны</option>
+          </select>
+        </div>
+        <div class="agents-grid" id="agents-grid"></div>
+        <div class="add-card" onclick="openAddAgent()">
+          <div style="font-size:22px">+</div>
+          <div>Добавить агента / ввести любой email</div>
+          <div style="font-size:11px;color:var(--muted)">Отправить запрос любому адресу</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(4)">← Назад</button>
+        <button class="btn btn-primary" onclick="goStep(6)">Сформировать письмо →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 6 -->
+    <div class="page" id="page-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Письмо-запрос (RFQ)</div></div>
+        <div class="info-box">Письмо сформировано автоматически. Нажмите на текст чтобы отредактировать перед отправкой.</div>
+        <div id="em-loading" class="load-row"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>Генерирую письмо...</span></div>
+        <div id="em-content" style="display:none">
+          <div class="email-hdr">
+            <span class="email-lbl">Кому:</span><span class="email-val" id="em-to">—</span>
+            <span class="email-lbl">Тема:</span><span class="email-val" id="em-subj">—</span>
+            <span class="email-lbl">Запрос №:</span><span class="email-val" id="em-rfq">—</span>
+          </div>
+          <div class="email-body" id="em-body" contenteditable="true"></div>
+          <div class="input-hint" style="margin-top:7px">Нажмите на текст чтобы редактировать · Каждому агенту отправляется отдельное письмо</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(5)">← Назад</button>
+        <button class="btn btn-primary" id="btn-to7" onclick="goStep(7)" disabled>К отправке →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 7 -->
+    <div class="page" id="page-7">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Отправка запросов</div></div>
+        <div class="info-box" id="send-info"></div>
+        <div class="send-rows" id="send-rows"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(6)">← Назад</button>
+        <button class="btn btn-success" id="btn-send" onclick="sendAll()">📤 Отправить все письма</button>
+        <button class="btn btn-primary" id="btn-to8" style="display:none" onclick="goStep(8)">Смотреть результаты →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 8 -->
+    <div class="page" id="page-8">
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-val" id="st-s" style="color:var(--text)">0</div><div class="stat-lbl">Отправлено</div></div>
+        <div class="stat"><div class="stat-val" id="st-a" style="color:var(--success)">0</div><div class="stat-lbl">Ответили</div></div>
+        <div class="stat"><div class="stat-val" id="st-p" style="color:#B45309">0</div><div class="stat-lbl">Ожидают</div></div>
+        <div class="stat"><div class="stat-val" id="st-r" style="color:var(--muted)">0%</div><div class="stat-lbl">Конверсия</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Предложения агентов</div></div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Агент</th><th>Страна</th><th>Ставка</th><th>Транзит</th><th>Перевозчик</th><th>Условия</th><th>Оценка</th>
+            </tr></thead>
+            <tbody id="res-body"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--muted)">🟡 Жёлтый — лучшее предложение &nbsp;·&nbsp; 🔵 Синий — агент платформы (анонимно)</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="addSimResp()">+ Симулировать новый ответ</button>
+        <span class="spacer"></span>
+        <button class="btn btn-primary" onclick="resetAll()">Новый запрос</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div class="modal-bg" id="modal-add">
+  <div class="modal">
+    <div class="modal-title">
+      Добавить агента в рассылку
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-group" style="margin-bottom:11px">
+      <label>Название компании</label>
+      <input type="text" id="na-name" placeholder="Название или ФИО">
+    </div>
+    <div class="form-group" style="margin-bottom:11px">
+      <label>Email *</label>
+      <input type="email" id="na-email" placeholder="agent@example.com">
+    </div>
+    <div class="form-group" style="margin-bottom:11px">
+      <label>Страна</label>
+      <select id="na-country">
+        <option value="">Не указана</option>
+        <option>Китай</option><option>Германия</option><option>Нидерланды</option><option>Турция</option>
+        <option>ОАЭ</option><option>Россия</option><option>Финляндия</option><option>Казахстан</option>
+        <option>Южная Корея</option><option>Гонконг</option><option>Другая</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:16px">
+      <input type="checkbox" id="na-save" style="accent-color:var(--accent)">
+      <label for="na-save" style="font-size:12px;cursor:pointer;color:var(--text2)">Сохранить в базу агентов</label>
+    </div>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="confirmAddAgent()">Добавить в рассылку</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+// ── AGENT TEMPLATES BY COUNTRY ────────────────────────────────────────
+const AGENT_TEMPLATES = {
+  "Китай":      [{name:"Sinofreight Co.",email:"rfq@sinofreight.cn",city:"Шанхай"},{name:"ChinaTrans Ltd.",email:"rates@chinatrans.cn",city:"Шэньчжэнь"},{name:"Dragon Cargo Co.",email:"rfq@dragoncargo.cn",city:"Гуанчжоу"},{name:"SinoLink Logistics",email:"info@sinolink.cn",city:"Нинбо"},{name:"PearlRiver Freight",email:"tender@prfreight.cn",city:"Тяньцзинь"}],
+  "Россия":     [{name:"Транс-Восток",email:"rfq@transvostok.ru",city:"Владивосток"},{name:"РусЛогистик",email:"rates@ruslogistic.ru",city:"Москва"},{name:"СевМорПуть",email:"rfq@sevmorput.ru",city:"Санкт-Петербург"},{name:"ЮгТранс",email:"info@jugtrans.ru",city:"Новороссийск"},{name:"ВостокФрейт",email:"rfq@vostokfreight.ru",city:"Екатеринбург"}],
+  "Германия":   [{name:"Freight Masters GmbH",email:"rfq@fmasters.de",city:"Гамбург"},{name:"EuroLogix GmbH",email:"rates@eurologix.de",city:"Бремен"},{name:"NordFreight AG",email:"rfq@nordfreight.de",city:"Дюссельдорф"},{name:"Rhine Cargo GmbH",email:"info@rhinecargo.de",city:"Франкфурт"},{name:"Baltic Trans GmbH",email:"tender@baltictrans.de",city:"Любек"}],
+  "Нидерланды": [{name:"EuroFreight BV",email:"rfq@eurofreight.nl",city:"Роттердам"},{name:"PortLogix BV",email:"rates@portlogix.nl",city:"Амстердам"},{name:"Delta Cargo NV",email:"rfq@deltacargo.nl",city:"Роттердам"},{name:"Maas Shipping BV",email:"info@maasship.nl",city:"Флиссинген"}],
+  "Турция":     [{name:"BlackSea Logistics",email:"rfq@blacksea.tr",city:"Стамбул"},{name:"TurkFreight A.Ş.",email:"rates@turkfreight.tr",city:"Мерсин"},{name:"Bosphorus Cargo",email:"rfq@bosphorus.tr",city:"Стамбул"},{name:"AnadoluTrans",email:"info@anadolutrans.tr",city:"Измир"}],
+  "ОАЭ":        [{name:"Gulf Cargo LLC",email:"rfq@gulfcargo.ae",city:"Дубай"},{name:"Emirates Freight",email:"rates@emiratesfreight.ae",city:"Абу-Даби"},{name:"Jebel Ali Trans",email:"rfq@jafreight.ae",city:"Джебель-Али"},{name:"MiddleEast Logix",email:"info@melogix.ae",city:"Шарджа"}],
+  "Южная Корея":[{name:"Pacific Route Ltd",email:"rfq@pacificroute.kr",city:"Пусан"},{name:"KoreaFreight Co.",email:"rates@koreafreight.kr",city:"Инчхон"},{name:"Busan Cargo Ltd",email:"rfq@busancargo.kr",city:"Пусан"},{name:"HanjinTrans",email:"info@hanjintrans.kr",city:"Сеул"}],
+  "Финляндия":  [{name:"NordTrans OY",email:"rfq@nordtrans.fi",city:"Хельсинки"},{name:"FinCargo OY",email:"rates@fincargo.fi",city:"Котка"},{name:"Baltic Freight FI",email:"rfq@balticfi.fi",city:"Турку"}],
+  "Казахстан":  [{name:"RailBridge CIS",email:"rfq@railbridge.kz",city:"Алматы"},{name:"KazTransLogistic",email:"rates@kaztrans.kz",city:"Нур-Султан"},{name:"СредАзияТранс",email:"rfq@sattrans.kz",city:"Шымкент"}],
+  "Гонконг":    [{name:"AirCargo Express HK",email:"rfq@aircargo.hk",city:"Гонконг"},{name:"HK Freight Ltd",email:"rates@hkfreight.hk",city:"Гонконг"},{name:"Pearl Delta Cargo",email:"rfq@pearldelta.hk",city:"Гонконг"}],
+  "Япония":     [{name:"NipponFreight Co.",email:"rfq@nipponfreight.jp",city:"Токио"},{name:"Osaka Trans Ltd",email:"rates@osakatrans.jp",city:"Осака"},{name:"Yokohama Cargo",email:"rfq@yokohamacargo.jp",city:"Йокогама"}],
+  "Индия":      [{name:"IndiaTrans Pvt.",email:"rfq@indiatrans.in",city:"Мумбаи"},{name:"Chennai Cargo Co.",email:"rates@chennaicargo.in",city:"Ченнаи"},{name:"Delhi Freight Ltd",email:"rfq@delhifreight.in",city:"Дели"}],
+  "США":        [{name:"AmeriFreight Inc.",email:"rfq@amerifreight.com",city:"Лос-Анджелес"},{name:"US Cargo LLC",email:"rates@uscargo.com",city:"Нью-Йорк"},{name:"Pacific Gateway",email:"rfq@pacificgw.com",city:"Сиэтл"}],
+  "Беларусь":   [{name:"БелТранс",email:"rfq@beltrans.by",city:"Минск"},{name:"МинскЛогистик",email:"rates@mlogistic.by",city:"Минск"}],
+  "Польша":     [{name:"PolFreight Sp.zo.o.",email:"rfq@polfreight.pl",city:"Варшава"},{name:"GdanskTrans",email:"rates@gdansktrans.pl",city:"Гданьск"}],
+};
+
+// Fallback if country not in templates
+const DEFAULT_AGENTS = [
+  {name:"GlobalFreight Co.",email:"rfq@globalfreight.com",city:""},
+  {name:"WorldCargo Ltd.",email:"rates@worldcargo.com",city:""},
+  {name:"IntlLogix Inc.",email:"rfq@intllogix.com",city:""},
+];
+
+// Build dynamic AGENTS_DB from selected route countries
+function buildAgentsDB(fromC, toC, modes){
+  const countries=[...new Set([fromC,toC].filter(Boolean))];
+  if(!countries.length) return AGENTS_DB_STATIC;
+  let result=[];
+  let idCounter=1;
+  countries.forEach(country=>{
+    const templates=AGENT_TEMPLATES[country]||DEFAULT_AGENTS.map(a=>({...a,city:''}));
+    templates.forEach(t=>{
+      const modePool=getModesByCountry(country,modes);
+      result.push({id:idCounter++,name:t.name,email:t.email,country,city:t.city,modes:modePool});
+    });
+  });
+  return result;
+}
+
+function getModesByCountry(country,requestModes){
+  if(requestModes&&requestModes.length) return requestModes;
+  return ["sea-fcl","sea-lcl","air"];
+}
+
+// Static fallback
+const AGENTS_DB_STATIC = [
+  {id:1,name:"Sinofreight Co.",email:"rfq@sinofreight.cn",country:"Китай",city:"Шанхай",modes:["sea-fcl","sea-lcl","air"]},
+  {id:2,name:"NordTrans OY",email:"rfq@nordtrans.fi",country:"Финляндия",city:"Хельсинки",modes:["sea-fcl","rail","multi"]},
+  {id:3,name:"Freight Masters GmbH",email:"quotes@fmasters.de",country:"Германия",city:"Гамбург",modes:["sea-fcl","sea-lcl","air","road-ftl"]},
+];
+
+// Current dynamic agents (rebuilt when route changes)
+let AGENTS_DB = [...AGENTS_DB_STATIC];
+
+// ── TRANSIT TIME BY MODE ──────────────────────────────────────────────
+function getTransitRange(modes, legs){
+  // legs used for multimodal
+  const allModes = modes.length ? modes : ['sea-fcl'];
+  if(allModes.includes('air')) return [1,3];
+  if(allModes.includes('multi')){
+    // multimodal: sum up legs
+    const legSet = legs.length ? legs : ['sea','rail'];
+    let min=0,max=0;
+    legSet.forEach(l=>{
+      if(l==='sea'){min+=12;max+=22;}
+      else if(l==='air'){min+=1;max+=2;}
+      else if(l==='rail'){min+=12;max+=20;}
+      else if(l==='road'){min+=3;max+=7;}
+      else if(l==='barge'){min+=5;max+=10;}
+    });
+    return [min, max];
+  }
+  if(allModes.includes('rail')) return [14,22];
+  if(allModes.includes('road-ftl')||allModes.includes('road-ltl')) return [5,14];
+  // sea FCL/LCL
+  return [18,40];
+}
+
+const MODE_NAMES = {"sea-fcl":"FCL","sea-lcl":"LCL","air":"Авиа","road-ftl":"Авто FTL","road-ltl":"Авто LTL","rail":"Ж/Д","multi":"Мульти"};
+const LEG_NAMES = {sea:"🚢 Море",air:"✈️ Авиа",rail:"🚂 Ж/Д",road:"🚛 Авто",barge:"⛵ Баржа"};
+const DOC_TYPES = ["Инвойс","Упаковочный лист","Коносамент","Сертификат происхождения","Техпаспорт","Разрешение на экспорт","Прочее"];
+const DOC_ICONS = {pdf:"📄",doc:"📝",docx:"📝",xls:"📊",xlsx:"📊",jpg:"🖼",jpeg:"🖼",png:"🖼"};
+
+let S = {
+  modes:[],legs:[],agents:[],waypoints:[],docs:[],photos:[],
+  customAgents:[],sentList:[],responses:[],platCount:0,alreadySent:false,dirty:false
+};
+let curStep = 1;
+
+// ── DIRTY / DRAFT ─────────────────────────────────────────────────────
+function markDirty(){ S.dirty=true; document.getElementById('dirty-dot').classList.add('show'); }
+
+function saveDraft(){
+  const fields=['rfq-number','f-inco','f-date','f-deadline','f-notes',
+    'f-country-from','f-country-to','f-origin','f-dest',
+    'f-cargo','f-cargo-en','f-hs','f-val','f-weight','f-vol','f-pcs','f-dims','f-special'];
+  const data={};
+  fields.forEach(id=>{const el=document.getElementById(id);if(el) data[id]=el.value;});
+  data.modes=S.modes; data.legs=S.legs; data.agents=S.agents;
+  data.waypoints=S.waypoints;
+  data.docs=S.docs.map(d=>({name:d.name,type:d.type}));
+  data.photos=S.photos.map(p=>({name:p.name}));
+  data.usePlat=document.getElementById('use-plat').checked;
+  try{localStorage.setItem('rfq_v2',JSON.stringify(data));} catch(e){}
+  S.dirty=false;
+  document.getElementById('dirty-dot').classList.remove('show');
+  toast('✓ Черновик сохранён');
+}
+
+function loadDraft(){
+  try{
+    const raw=localStorage.getItem('rfq_v2');
+    if(!raw) return;
+    const d=JSON.parse(raw);
+    ['rfq-number','f-inco','f-date','f-deadline','f-notes',
+     'f-country-from','f-country-to','f-origin','f-dest',
+     'f-cargo','f-cargo-en','f-hs','f-val','f-weight','f-vol','f-pcs','f-dims','f-special'
+    ].forEach(id=>{if(d[id]!==undefined){const el=document.getElementById(id);if(el)el.value=d[id];}});
+    if(d.modes){S.modes=d.modes;document.querySelectorAll('#mode-tags .tag').forEach(t=>{t.classList.toggle('sel',S.modes.includes(t.dataset.mode));});updateMultiUI();}
+    if(d.legs){S.legs=d.legs;document.querySelectorAll('.leg-tag').forEach(t=>{t.classList.toggle('sel',S.legs.includes(t.dataset.leg));});renderLegsPreview();}
+    if(d.agents) S.agents=d.agents;
+    if(d.waypoints){S.waypoints=d.waypoints;renderWps();}
+    if(d.docs) S.docs=d.docs.map(x=>({...x,sim:true}));
+    if(d.photos) S.photos=d.photos.map(x=>({...x,sim:true}));
+    if(d.usePlat) document.getElementById('use-plat').checked=true;
+    renderDocs(); updateRfqChip();
+    toast('Черновик восстановлен');
+  }catch(e){}
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────
+let maxStep = 1; // highest step ever reached
+
+function tryGoStep(n){ goStep(n); }
+
+function goStep(n){
+  // Always ensure agents are initialised before steps that need them
+  if(n>=5 && AGENTS_DB.length===0) initAgents();
+  if(n===5) initAgents();
+  if(n===6 && n>curStep) generateEmail();
+  if(n===7){
+    if(S.alreadySent) restoreSendUI();
+    else buildSendList();
+  }
+  if(n===8) buildResults();
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i+1===n));
+  if(n > maxStep) maxStep = n;
+  for(let i=1;i<=8;i++){
+    const el=document.getElementById('si-'+i);
+    if(!el) continue;
+    el.classList.remove('active','done','locked');
+    if(i===n) el.classList.add('active');
+    else if(i<n) el.classList.add('done');
+  }
+  curStep=n;
+  window.scrollTo(0,0);
+}
+
+// ── MODES ─────────────────────────────────────────────────────────────
+function toggleMode(el){
+  const m=el.dataset.mode;
+  el.classList.toggle('sel');
+  S.modes=el.classList.contains('sel')?[...S.modes,m]:S.modes.filter(x=>x!==m);
+  updateMultiUI(); markDirty();
+}
+function updateMultiUI(){
+  const on=S.modes.includes('multi');
+  document.getElementById('legs-builder').style.display=on?'block':'none';
+  if(!on){S.legs=[];document.querySelectorAll('.leg-tag').forEach(t=>t.classList.remove('sel'));renderLegsPreview();}
+}
+function toggleLeg(el){
+  const l=el.dataset.leg; el.classList.toggle('sel');
+  S.legs=el.classList.contains('sel')?[...S.legs,l]:S.legs.filter(x=>x!==l);
+  renderLegsPreview(); markDirty();
+}
+function renderLegsPreview(){
+  const p=document.getElementById('legs-preview');
+  p.innerHTML=S.legs.length?S.legs.map((l,i)=>`<span class="leg-pill">${LEG_NAMES[l]||l}</span>${i<S.legs.length-1?'<span style="color:var(--muted)">+</span>':''}`).join(''):'';
+}
+
+// ── WAYPOINTS ─────────────────────────────────────────────────────────
+function addWp(v=''){S.waypoints.push(v);renderWps();markDirty();}
+function renderWps(){
+  document.getElementById('wp-list').innerHTML=S.waypoints.map((w,i)=>`
+    <div class="waypoint-row">
+      <input type="text" value="${w}" placeholder="Порт, терминал..." oninput="S.waypoints[${i}]=this.value;markDirty()">
+      <button class="wp-del" onclick="S.waypoints.splice(${i},1);renderWps();markDirty()">×</button>
+    </div>`).join('');
+}
+
+// ── DOCUMENTS ─────────────────────────────────────────────────────────
+function addFiles(e,kind){
+  Array.from(e.target.files).forEach(f=>{
+    const entry={name:f.name,type:DOC_TYPES[0],kind,sim:false};
+    if(kind==='doc') S.docs.push(entry); else S.photos.push(entry);
+  });
+  e.target.value=''; renderDocs(); markDirty();
+}
+function handleDrop(e){
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  Array.from(e.dataTransfer.files).forEach(f=>S.docs.push({name:f.name,type:DOC_TYPES[0],kind:'doc',sim:false}));
+  renderDocs(); markDirty();
+}
+function renderDocs(){
+  renderDocList('doc-list',S.docs,'doc');
+  renderDocList('photo-list',S.photos,'photo');
+}
+function renderDocList(cid,arr,kind){
+  const c=document.getElementById(cid);
+  if(!arr.length){c.innerHTML='';return;}
+  const ext=n=>(n.split('.').pop()||'').toLowerCase();
+  c.innerHTML=arr.map((d,i)=>`
+    <div class="doc-row">
+      <div class="doc-icon">${DOC_ICONS[ext(d.name)]||'📎'}</div>
+      <div class="doc-info">
+        <div class="doc-name">${d.name}</div>
+        ${kind==='doc'?`<select class="doc-type-sel" onchange="S.${kind==='doc'?'docs':'photos'}[${i}].type=this.value;markDirty()">${DOC_TYPES.map(t=>`<option${t===d.type?' selected':''}>${t}</option>`).join('')}</select>`:'<div style="font-size:11px;color:var(--muted)">Фото груза</div>'}
+      </div>
+      <button class="doc-del" onclick="S.${kind==='doc'?'docs':'photos'}.splice(${i},1);renderDocs();markDirty()">×</button>
+    </div>`).join('');
+}
+
+// ── AGENTS ────────────────────────────────────────────────────────────
+function initAgents(){
+  const fromC=document.getElementById('f-country-from').value;
+  const toC=document.getElementById('f-country-to').value;
+  const modes=S.modes;
+
+  // Rebuild AGENTS_DB dynamically from route countries
+  AGENTS_DB = buildAgentsDB(fromC, toC, modes);
+
+  // Auto-select all agents (up to 8)
+  S.agents = AGENTS_DB.map(a=>a.id).slice(0,8);
+
+  // Show info chip
+  const infoEl=document.getElementById('agent-autoinfo');
+  if(infoEl){
+    if(fromC||toC){
+      infoEl.textContent=`✦ Агенты подобраны автоматически по маршруту: ${[fromC,toC].filter(Boolean).join(' → ')}`;
+      infoEl.style.display='block';
+    } else {
+      infoEl.style.display='none';
+    }
+  }
+
+  // Populate country filter
+  const cf=document.getElementById('agent-cf');
+  const countries=[...new Set(AGENTS_DB.map(a=>a.country))].sort();
+  cf.innerHTML='<option value="">Все страны</option>'+countries.map(c=>`<option>${c}</option>`).join('');
+
+  // Update platform count — save into S so it stays consistent on steps 7 and 8
+  S.platCount = 10 + Math.floor(Math.random()*10);
+  document.getElementById('plat-count').textContent=`● ${S.platCount} агентов по маршруту`;
+  filterAgents();
+}
+
+function filterAgents(){
+  const q=(document.getElementById('agent-q').value||'').toLowerCase();
+  const cf=document.getElementById('agent-cf').value;
+  const all=[...AGENTS_DB,...S.customAgents];
+  const filtered=all.filter(a=>{
+    const mq=!q||a.name.toLowerCase().includes(q)||(a.email||'').includes(q)||a.country.toLowerCase().includes(q);
+    const mc=!cf||a.country===cf;
+    return mq&&mc;
+  });
+  renderAgents(filtered);
+}
+
+function renderAgents(list){
+  const grid=document.getElementById('agents-grid');
+  grid.innerHTML=list.map(a=>`
+    <div class="agent-card${S.agents.includes(a.id)?' sel':''}" id="ac-${a.id}" onclick="toggleAgent(${a.id})">
+      <div class="agent-ck">✓</div>
+      <div class="agent-name">${a.name}${a.isCustom?' <span style="font-size:10px;color:var(--muted)">(добавлен)</span>':''}</div>
+      <div class="agent-country">${a.country}${a.city?' · '+a.city:''}</div>
+      ${a.email?`<div style="font-size:11px;color:var(--muted);margin-bottom:5px">${a.email}</div>`:''}
+      <div class="agent-pills">${(a.modes||[]).map(m=>`<span class="ap">${MODE_NAMES[m]||m}</span>`).join('')}</div>
+    </div>`).join('');
+  document.getElementById('sel-count').textContent=`Выбрано: ${S.agents.length}`;
+}
+
+function toggleAgent(id){
+  const i=S.agents.indexOf(id);
+  if(i>=0) S.agents.splice(i,1); else S.agents.push(id);
+  const c=document.getElementById('ac-'+id);
+  if(c) c.classList.toggle('sel',S.agents.includes(id));
+  document.getElementById('sel-count').textContent=`Выбрано: ${S.agents.length}`;
+  markDirty();
+}
+
+function openAddAgent(){ document.getElementById('modal-add').classList.add('show'); }
+function closeModal(){ document.getElementById('modal-add').classList.remove('show'); }
+function confirmAddAgent(){
+  const name=document.getElementById('na-name').value.trim()||'Новый агент';
+  const email=document.getElementById('na-email').value.trim();
+  const country=document.getElementById('na-country').value||'Другая';
+  if(!email){toast('Введите email');return;}
+  const id=2000+S.customAgents.length+1;
+  S.customAgents.push({id,name,email,country,city:'',modes:[],isCustom:true});
+  S.agents.push(id);
+  closeModal();
+  filterAgents();
+  markDirty();
+  toast(`✓ ${name} добавлен`);
+}
+
+// ── EMAIL ─────────────────────────────────────────────────────────────
+async function generateEmail(){
+  document.getElementById('em-loading').style.display='flex';
+  document.getElementById('em-content').style.display='none';
+  document.getElementById('btn-to7').disabled=true;
+
+  const rfq=document.getElementById('rfq-number').value||'RFQ';
+  const modes=S.modes.map(m=>MODE_NAMES[m]||m).join(', ')||'перевозка';
+  const legs=S.legs.map(l=>LEG_NAMES[l]||l).join(' + ');
+  const from=document.getElementById('f-origin').value||document.getElementById('f-country-from').value||'—';
+  const to=document.getElementById('f-dest').value||document.getElementById('f-country-to').value||'—';
+  const wps=S.waypoints.filter(Boolean);
+  const inco=document.getElementById('f-inco').value;
+  const date=document.getElementById('f-date').value||'уточняется';
+  const cargo=document.getElementById('f-cargo').value||'груз';
+  const hs=document.getElementById('f-hs').value;
+  const weight=document.getElementById('f-weight').value;
+  const vol=document.getElementById('f-vol').value;
+  const pcs=document.getElementById('f-pcs').value;
+  const val=document.getElementById('f-val').value;
+  const curr=document.getElementById('f-curr')?document.getElementById('f-curr').value||'USD':'USD';
+  const special=document.getElementById('f-special').value;
+  const svcs=getSelSvcs();
+  const notes=document.getElementById('f-notes').value;
+  const hasDocs=S.docs.length>0;
+
+  const prompt=`Ты — менеджер международной экспедиторской компании. Напиши профессиональное письмо-запрос ставки (RFQ) для агента-партнёра.
+
+Запрос №: ${rfq}
+Вид перевозки: ${modes}${legs?' (плечи: '+legs+')':''}
+Маршрут: ${from} → ${to}${wps.length?' транзит через: '+wps.join(', '):''}
+Incoterms: ${inco||'не указано'}
+Дата готовности: ${date}
+Груз: ${cargo}${hs?' (HS: '+hs+')':''}
+Вес: ${weight||'—'} кг / Объём: ${vol||'—'} м³ / Мест: ${pcs||'—'}
+Стоимость: ${val||'—'} ${curr}
+Особые условия: ${special||'нет'}
+Доп. услуги: ${svcs}
+${notes?'Комментарий: '+notes:''}
+
+Требования: деловой русский, без обращения по имени, все параметры, просьба дать ставку с расшифровкой + транзит + перевозчик + срок действия. 220–260 слов. Только текст.`;
+
+  let text='';
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+    const d=await r.json();
+    text=d.content.map(c=>c.text||'').join('');
+  }catch(e){
+    text=`Уважаемые коллеги,\n\nНаправляем запрос на расчёт стоимости перевозки (${rfq}).\n\nВид перевозки: ${modes}${legs?' / плечи: '+legs:''}\nМаршрут: ${from} → ${to}${wps.length?'\nТранзит: '+wps.join(', '):''}\nIncoterms: ${inco||'—'}\nДата готовности: ${date}\n\nГруз: ${cargo}${hs?' (HS '+hs+')':''}\nВес: ${weight||'—'} кг / Объём: ${vol||'—'} м³ / Мест: ${pcs||'—'}\nСтоимость: ${val||'—'} ${curr}\nОсобые условия: ${special||'нет'}\n\nДоп. услуги: ${svcs}\n\n${notes}\n\nПросим указать: ставку фрахта с расшифровкой, транзитное время, перевозчика, срок действия ставки.\n\nОтвет ожидаем в течение 2 рабочих дней.\n\nС уважением,\nОтдел международной логистики`;
+  }
+
+  const allA=[...AGENTS_DB,...S.customAgents];
+  const usePlat=document.getElementById('use-plat').checked;
+  const agentCount=S.agents.length+(usePlat?'+платформа':'');
+  document.getElementById('em-to').textContent=`${S.agents.length} агентов из базы${usePlat?' + агенты платформы (анонимно)':''}`;
+  document.getElementById('em-subj').textContent=`Запрос ставки — ${cargo} — ${from} → ${to} [${rfq}]`;
+  document.getElementById('em-rfq').textContent=rfq;
+  document.getElementById('em-body').textContent=text;
+  document.getElementById('em-loading').style.display='none';
+  document.getElementById('em-content').style.display='block';
+  document.getElementById('btn-to7').disabled=false;
+}
+
+// ── SEND ──────────────────────────────────────────────────────────────
+function buildSendList(){
+  const allA=[...AGENTS_DB,...S.customAgents];
+  // If sentList is empty but agents exist, build from current agents
+  if(!S.sentList.length && S.agents.length){
+    S.sentList=S.agents.map(id=>allA.find(a=>a.id===id)).filter(Boolean);
+  }
+  const usePlat=document.getElementById('use-plat').checked;
+  // Use the count fixed at step 5 — don't re-randomise
+  if(!usePlat) S.platCount=0;
+  const pc=S.platCount;
+  const totalStr=usePlat?`${S.sentList.length} из базы + ${pc} с платформы = <strong>${S.sentList.length+pc} писем</strong>`:`<strong>${S.sentList.length} писем</strong> агентам из базы`;
+  document.getElementById('send-info').innerHTML=`Готово к отправке: ${totalStr}.`;
+  document.getElementById('send-rows').innerHTML=[
+    ...S.sentList.map(a=>`
+    <div class="send-row pending" id="sr-${a.id}">
+      <div class="sdot"></div>
+      <div style="flex:1"><strong>${a.name}</strong> <span style="font-size:12px;color:var(--muted)">${a.email||''} · ${a.country}</span></div>
+      <div class="stag" id="st-${a.id}">Ожидание</div>
+    </div>`),
+    ...(usePlat?[`<div class="send-row pending" id="sr-plat"><div class="sdot"></div><div style="flex:1"><strong>Агенты платформы CargoIntegrator</strong> <span style="font-size:12px;color:var(--muted)">${pc} агентов · анонимно</span></div><div class="stag" id="st-plat">Ожидание</div></div>`]:[])
+  ].join('');
+  document.getElementById('btn-send').style.display='inline-flex';
+  document.getElementById('btn-to8').style.display='none';
+  S.responses=[];
+  S.alreadySent=false;
+}
+
+function restoreSendUI(){
+  // Already sent — show completed state without resetting
+  const allA=[...AGENTS_DB,...S.customAgents];
+  const usePlat=document.getElementById('use-plat').checked;
+  const pc=S.platCount||0;
+  const totalStr=usePlat?`${S.sentList.length} из базы + ${pc} с платформы = <strong>${S.sentList.length+pc} писем</strong>`:`<strong>${S.sentList.length} писем</strong> агентам из базы`;
+  document.getElementById('send-info').innerHTML=`Отправлено: ${totalStr}.`;
+  document.getElementById('send-rows').innerHTML=[
+    ...S.sentList.map(a=>`
+    <div class="send-row sent" id="sr-${a.id}">
+      <div class="sdot"></div>
+      <div style="flex:1"><strong>${a.name}</strong> <span style="font-size:12px;color:var(--muted)">${a.email||''} · ${a.country}</span></div>
+      <div class="stag sent">✓ Отправлено</div>
+    </div>`),
+    ...(usePlat?[`<div class="send-row sent" id="sr-plat"><div class="sdot"></div><div style="flex:1"><strong>Агенты платформы CargoIntegrator</strong> <span style="font-size:12px;color:var(--muted)">${pc} агентов · анонимно</span></div><div class="stag sent">✓ Отправлено</div></div>`]:[])
+  ].join('');
+  document.getElementById('btn-send').style.display='none';
+  document.getElementById('btn-to8').style.display='inline-flex';
+}
+
+async function sendAll(){
+  const btn=document.getElementById('btn-send'); btn.disabled=true;
+  const usePlat=document.getElementById('use-plat').checked;
+  const ids=[...S.sentList.map(a=>a.id),...(usePlat?['plat']:[])];
+  for(const id of ids){
+    const sr=document.getElementById('sr-'+id), st=document.getElementById('st-'+id);
+    if(!sr) continue;
+    sr.classList.remove('pending'); sr.classList.add('sending'); st.textContent='Отправляется...';
+    await delay(400+Math.random()*500);
+    sr.classList.remove('sending'); sr.classList.add('sent'); st.textContent='✓ Отправлено';
+  }
+  btn.style.display='none';
+  document.getElementById('btn-to8').style.display='inline-flex';
+  S.alreadySent=true;
+  genResponses();
+}
+
+function genResponses(){
+  const CARR_SEA=['COSCO','Maersk','MSC','Evergreen','Hapag-Lloyd','CMA CGM','ONE','Yang Ming'];
+  const CARR_AIR=['Lufthansa Cargo','Air China Cargo','Emirates SkyCargo','FedEx','DHL Express','Cargolux','AirBridgeCargo'];
+  const CARR_RAIL=['РЖД / FESCO','TransContainer','ОТЛК ЕРА','Gefco Rail','DB Cargo'];
+  const CARR_ROAD=['DHL Freight','DSV Road','DB Schenker','Kuehne+Nagel','XPO Logistics'];
+  const NOTES_SEA=['Включая THC и BAF','Надбавка PSS +$150','Предоплата 30%','Прямой сервис без траншипмента','Ставка 7 дней','Включая B/L и документацию'];
+  const NOTES_AIR=['Включая топливный сбор','Экспресс-доставка доступна','Чартер по запросу','Ставка на кг брутто','Включая handling fee'];
+  const NOTES_RAIL=['Включая терминальную обработку','Сборный вагон / контейнер','Ставка до ст. назначения','Время в пути без таможни'];
+  const NOTES_ROAD=['Включая все сборы','Выделенная машина','Доставка до двери','Ставка FTL'];
+
+  const modes=S.modes;
+  const legs=S.legs;
+  const [tMin,tMax]=getTransitRange(modes,legs);
+
+  let priceMin=1500,priceMax=5000;
+  if(modes.includes('air')){priceMin=800;priceMax=3500;}
+  else if(modes.includes('rail')){priceMin=1200;priceMax=3000;}
+  else if(modes.includes('road-ftl')||modes.includes('road-ltl')){priceMin=800;priceMax=2500;}
+  else if(modes.includes('multi')){priceMin=2000;priceMax=6000;}
+
+  let carrPool=CARR_SEA, notesPool=NOTES_SEA;
+  if(modes.includes('air')){carrPool=CARR_AIR;notesPool=NOTES_AIR;}
+  else if(modes.includes('rail')){carrPool=CARR_RAIL;notesPool=NOTES_RAIL;}
+  else if(modes.includes('road-ftl')||modes.includes('road-ltl')){carrPool=CARR_ROAD;notesPool=NOTES_ROAD;}
+
+  S.responses=S.sentList.map(a=>{
+    if(Math.random()<0.7){
+      const transit=Math.round(tMin+(tMax-tMin)*Math.random());
+      return{id:a.id,name:a.name,country:a.country,email:a.email||'',isPlatform:false,received:true,
+        price:Math.round((priceMin+Math.random()*(priceMax-priceMin))/50)*50,
+        transit,
+        carrier:carrPool[Math.floor(Math.random()*carrPool.length)],
+        note:notesPool[Math.floor(Math.random()*notesPool.length)]};
+    }
+    return{id:a.id,name:a.name,country:a.country,email:a.email||'',isPlatform:false,received:false};
+  });
+
+  if(document.getElementById('use-plat').checked){
+    const n=S.platCount||4;
+    for(let i=0;i<n;i++){
+      const transit=Math.round(tMin+(tMax-tMin)*Math.random());
+      S.responses.push({id:'p'+i,name:'Агент платформы #'+(i+1),country:'Скрыто',isPlatform:true,received:true,
+        price:Math.round((priceMin+Math.random()*(priceMax-priceMin))/50)*50,
+        transit,
+        carrier:carrPool[Math.floor(Math.random()*carrPool.length)],
+        note:'Анонимное предложение'});
+    }
+  }
+}
+
+// ── RESULTS ───────────────────────────────────────────────────────────
+function buildResults(){ updateStats(); renderTable(); }
+
+function updateStats(){
+  const totalSent=S.sentList.length+(S.platCount||0);
+  const ans=S.responses.filter(r=>r.received).length;
+  const pend=S.responses.filter(r=>!r.received).length;
+  document.getElementById('st-s').textContent=totalSent;
+  document.getElementById('st-a').textContent=ans;
+  document.getElementById('st-p').textContent=totalSent-ans;
+  document.getElementById('st-r').textContent=totalSent?Math.round(ans/totalSent*100)+'%':'0%';
+}
+
+function renderTable(){
+  const ans=S.responses.filter(r=>r.received);
+  const best=ans.sort((a,b)=>(a.price+a.transit*35)-(b.price+b.transit*35))[0]?.id;
+  document.getElementById('res-body').innerHTML=S.responses.map(r=>{
+    if(!r.received) return`<tr><td><strong>${r.name}</strong></td><td style="font-size:12px">${r.country}</td><td colspan="3" style="color:var(--muted);font-style:italic;font-size:12px">Нет ответа</td><td>—</td><td><span class="badge b-wait">Ожидание</span></td></tr>`;
+    const isBest=r.id===best;
+    return`<tr class="${isBest?'best-r':''} ${r.isPlatform?'plat-r':''}">
+      <td><strong>${r.name}</strong></td>
+      <td style="font-size:12px">${r.isPlatform?'<span style="color:var(--accent)">🔒 Скрыто</span>':r.country}</td>
+      <td><span class="price-big">$${r.price.toLocaleString()}</span></td>
+      <td>${r.transit} дн.</td>
+      <td style="font-size:12px">${r.carrier}</td>
+      <td style="font-size:12px;max-width:150px">${r.note}</td>
+      <td><span class="badge ${isBest?'b-best':r.price<3500?'b-good':'b-avg'}">${isBest?'★ Лучшее':r.price<3500?'Выгодно':'Среднее'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function addSimResp(){
+  const p=S.responses.filter(r=>!r.received);
+  if(!p.length){toast('Все ответили!');return;}
+  const r=p[0]; r.received=true;
+  r.price=Math.round((2200+Math.random()*3500)/50)*50;
+  r.transit=Math.round(18+Math.random()*28);
+  r.carrier=['COSCO','Maersk','MSC'][Math.floor(Math.random()*3)];
+  r.note='Готовы подтвердить слоты';
+  updateStats(); renderTable();
+  toast('✓ Новый ответ от '+r.name);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────
+// ── MULTISELECT SERVICES ──────────────────────────────────────────────
+let svcOpen = false;
+function toggleSvcDropdown(e){
+  e.stopPropagation();
+  svcOpen = !svcOpen;
+  const dd = document.getElementById('svc-dropdown');
+  const box = document.getElementById('svc-box');
+  const arr = document.getElementById('svc-arrow');
+  dd.style.display = svcOpen ? 'block' : 'none';
+  box.classList.toggle('open', svcOpen);
+  arr.classList.toggle('open', svcOpen);
+}
+function toggleSvc(el){
+  el.classList.toggle('sel');
+  renderSvcChips();
+  markDirty();
+}
+function renderSvcChips(){
+  const sel = [...document.querySelectorAll('#svc-dropdown .multisel-opt.sel')].map(o=>o.dataset.val);
+  const chips = document.getElementById('svc-chips');
+  if(!sel.length){
+    chips.innerHTML = '<span class="multisel-placeholder">Выберите услуги...</span>';
+  } else {
+    chips.innerHTML = sel.map(v=>`<span class="multisel-chip">${v}<span onclick="removeSvc('${v}',event)" style="cursor:pointer;opacity:.6;font-size:11px;margin-left:2px">×</span></span>`).join('');
+  }
+}
+function removeSvc(val, e){
+  e.stopPropagation();
+  const opt = document.querySelector(`#svc-dropdown .multisel-opt[data-val="${val}"]`);
+  if(opt) opt.classList.remove('sel');
+  renderSvcChips(); markDirty();
+}
+function getSelSvcs(){
+  return [...document.querySelectorAll('#svc-dropdown .multisel-opt.sel')].map(o=>o.dataset.val).join(', ') || 'нет';
+}
+document.addEventListener('click', ()=>{ if(svcOpen){ svcOpen=false; document.getElementById('svc-dropdown').style.display='none'; document.getElementById('svc-box').classList.remove('open'); document.getElementById('svc-arrow').classList.remove('open'); }});
+
+function autoRfq(){
+  const now=new Date();
+  const y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,'0'), d=String(now.getDate()).padStart(2,'0');
+  const n=String(Math.floor(Math.random()*900)+100);
+  document.getElementById('rfq-number').value=`RFQ-${y}${m}${d}-${n}`;
+  updateRfqChip(); markDirty();
+}
+function onRfqInput(){ updateRfqChip(); markDirty(); }
+function updateRfqChip(){
+  const v=document.getElementById('rfq-number').value;
+  const chip=document.getElementById('rfq-chip');
+  chip.textContent=v; chip.style.display=v?'inline-block':'none';
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400);
+}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function resetAll(){
+  maxStep=1;
+  S={modes:[],legs:[],agents:[],waypoints:[],docs:[],photos:[],customAgents:[],sentList:[],responses:[],platCount:0,alreadySent:false,dirty:false};
+  document.querySelectorAll('input:not([type=file]):not([type=checkbox]),textarea').forEach(el=>el.value='');
+  document.querySelectorAll('select').forEach(el=>el.selectedIndex=0);
+  document.querySelectorAll('.tag.sel,.leg-tag.sel').forEach(el=>el.classList.remove('sel'));
+  document.querySelectorAll('.multisel-opt.sel').forEach(el=>el.classList.remove('sel'));
+  renderSvcChips();
+  document.getElementById('use-plat').checked=false;
+  document.getElementById('legs-builder').style.display='none';
+  document.getElementById('wp-list').innerHTML='';
+  renderDocs(); updateRfqChip();
+  document.getElementById('dirty-dot').classList.remove('show');
+  goStep(1); autoRfq();
+}
+
+// ── MULTISELECT ───────────────────────────────────────────────────────
+function toggleSvcDropdown(e){
+  e.stopPropagation();
+  const dd=document.getElementById('svc-dropdown');
+  const box=document.getElementById('svc-box');
+  const arrow=document.getElementById('svc-arrow');
+  const isOpen=dd.style.display!=='none';
+  dd.style.display=isOpen?'none':'block';
+  box.classList.toggle('open',!isOpen);
+  arrow.classList.toggle('open',!isOpen);
+}
+
+function toggleSvc(el){
+  el.classList.toggle('sel');
+  renderSvcChips();
+  markDirty();
+}
+
+function getSelSvcs(){
+  return [...document.querySelectorAll('.multisel-opt.sel')].map(el=>el.dataset.val);
+}
+
+function renderSvcChips(){
+  const vals=getSelSvcs();
+  const chips=document.getElementById('svc-chips');
+  if(!vals.length){
+    chips.innerHTML='<span class="multisel-placeholder">Выберите услуги...</span>';
+  } else {
+    chips.innerHTML=vals.map(v=>`<span class="multisel-chip">${v}<span class="chip-del" onclick="removeSvc(event,'${v}')">×</span></span>`).join('');
+  }
+}
+
+function removeSvc(e,val){
+  e.stopPropagation();
+  document.querySelectorAll('.multisel-opt').forEach(el=>{if(el.dataset.val===val) el.classList.remove('sel');});
+  renderSvcChips(); markDirty();
+}
+
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#svc-wrap')){
+    const dd=document.getElementById('svc-dropdown');
+    if(dd) dd.style.display='none';
+    const box=document.getElementById('svc-box');
+    if(box) box.classList.remove('open');
+    const arrow=document.getElementById('svc-arrow');
+    if(arrow) arrow.classList.remove('open');
+  }
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────
+autoRfq();
+document.getElementById('f-date').value=new Date(Date.now()+14*864e5).toISOString().split('T')[0];
+loadDraft();
+</script>
+</body>
+</html>
+
